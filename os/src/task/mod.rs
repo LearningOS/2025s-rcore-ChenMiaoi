@@ -153,6 +153,54 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    /// Add the specific syscall's trace number
+    pub fn task_trace_inc(&self, sys_id: usize) {
+        let mut inner = self.inner.exclusive_access();
+        let current_task = inner.current_task;
+        inner.tasks[current_task].task_trace[sys_id] += 1;
+    }
+
+    /// Get the specific syscall's trace number
+    pub fn get_task_trace(&self, sys_id: usize) -> isize {
+        let inner = self.inner.exclusive_access();
+        let current_task = inner.current_task;
+        inner.tasks[current_task].task_trace[sys_id] as isize
+    }
+
+    /// Map the specific task
+    pub fn mmap(&self, start: usize, len: usize, prot: usize) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current_task = inner.current_task;
+        inner.tasks[current_task].mmap(start, len, prot)
+    }
+
+    /// Unmap the specific task
+    pub fn munmap(&self, start: usize, len: usize) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current_task = inner.current_task;
+        inner.tasks[current_task].munmap(start, len)
+    }
+}
+
+/// Add the specific syscall's trace number
+pub fn task_trace_inc(sys_id: usize) {
+    TASK_MANAGER.task_trace_inc(sys_id);
+}
+
+/// Get the specific syscall's trace number
+pub fn get_task_trace(sys_id: usize) -> isize {
+    TASK_MANAGER.get_task_trace(sys_id)
+}
+
+/// Map the specific task
+pub fn mmap(start: usize, len: usize, prot: usize) -> isize {
+    TASK_MANAGER.mmap(start, len, prot)
+}
+
+/// Unmap the specific task
+pub fn munmap(start: usize, len: usize) -> isize {
+    TASK_MANAGER.munmap(start, len)
 }
 
 /// Run the first task in task list.

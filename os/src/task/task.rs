@@ -1,6 +1,6 @@
 //! Types related to task management
 use super::TaskContext;
-use crate::config::TRAP_CONTEXT_BASE;
+use crate::config::{MAX_TRACE_NUM, TRAP_CONTEXT_BASE};
 use crate::mm::{
     kernel_stack_position, MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE,
 };
@@ -13,6 +13,9 @@ pub struct TaskControlBlock {
 
     /// Maintain the execution status of the current process
     pub task_status: TaskStatus,
+
+    /// The task trace
+    pub task_trace: [usize; MAX_TRACE_NUM],
 
     /// Application address space
     pub memory_set: MemorySet,
@@ -58,6 +61,7 @@ impl TaskControlBlock {
         let task_control_block = Self {
             task_status,
             task_cx: TaskContext::goto_trap_return(kernel_stack_top),
+            task_trace: [0; MAX_TRACE_NUM],
             memory_set,
             trap_cx_ppn,
             base_size: user_sp,
@@ -94,6 +98,28 @@ impl TaskControlBlock {
             Some(old_break)
         } else {
             None
+        }
+    }
+
+    /// the tast api mmap
+    pub fn mmap(&mut self, start: usize, len: usize, prot: usize) -> isize {
+        match self.memory_set.mmap_impl(start, len, prot) {
+            Ok(_) => 0,
+            Err(err) => {
+                error!("{}", err);
+                -1
+            }
+        }
+    }
+
+    /// the task api munmap
+    pub fn munmap(&mut self, start: usize, len: usize) -> isize {
+        match self.memory_set.munmap_impl(start, len) {
+            Ok(_) => 0,
+            Err(err) => {
+                error!("{}", err);
+                -1
+            }
         }
     }
 }

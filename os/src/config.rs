@@ -15,6 +15,9 @@ pub const PAGE_SIZE: usize = 0x1000;
 pub const PAGE_SIZE_BITS: usize = 0xc;
 /// the max number of syscall
 pub const MAX_SYSCALL_NUM: usize = 500;
+/// max syscall of trace
+/// for the `ch3` cannot smaller `410`, the whole syscall is `473`, so specific `480`
+pub const MAX_TRACE_NUM: usize = 480;
 /// the virtual addr of trapoline
 pub const TRAMPOLINE: usize = usize::MAX - PAGE_SIZE + 1;
 /// the virtual addr of trap context

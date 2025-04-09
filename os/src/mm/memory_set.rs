@@ -262,6 +262,77 @@ impl MemorySet {
             false
         }
     }
+
+    #[allow(unused)]
+    fn is_page_aligned(virt_addr: usize) -> bool {
+        (virt_addr % (PAGE_SIZE - 1)) == 0
+    }
+
+    /// implement mmap
+    /// 1. virt mem must align to page
+    /// 2. prot -> 0x1, 0x2, 0x4, 0x7
+    /// 3. already mapped
+    /// 4. have no enough memory
+    pub fn mmap_impl(&mut self, start: usize, len: usize, prot: usize) -> Result<VirtAddr, &str> {
+        // the first condition
+        if (start & (PAGE_SIZE - 1)) != 0 {
+            return Err("mmap_impl: {start} not algned to page!");
+        }
+
+        // the second condition
+        if (prot & !0x7) != 0 || prot & 0x7 == 0 {
+            return Err("mmap_impl: {prot} not valid!");
+        }
+
+        let mut v_permission = MapPermission::U;
+        if prot & 0x1 != 0 {
+            v_permission |= MapPermission::R;
+        }
+        if prot & 0x2 != 0 {
+            v_permission |= MapPermission::W;
+        }
+        if prot & 0x4 != 0 {
+            v_permission |= MapPermission::X;
+        }
+
+        let v_start = VirtAddr::from(start);
+        let v_end = VirtAddr::from(start + len);
+
+        // the third condition
+        if self.areas.iter().any(|area| {
+            area.vpn_range.get_start() <= v_end.floor()
+                && area.vpn_range.get_end() > v_start.floor()
+        }) {
+            return Err("mmap_impl: this addr[{start}] already mapped!");
+        }
+
+        self.insert_framed_area(v_start, v_end, v_permission);
+
+        Ok(v_start)
+    }
+
+    /// implement munmap
+    /// 1. virt mem must align to page
+    /// 2. virt memory are not maaped
+    pub fn munmap_impl(&mut self, start: usize, len: usize) -> Result<(), &str> {
+        if (start & (PAGE_SIZE - 1)) != 0 {
+            return Err("munmap_impl: {start} not algned to page!");
+        }
+
+        let v_start = VirtAddr::from(start);
+        let v_end = VirtAddr::from(start + len);
+
+        if let Some(idx) = self.areas.iter().position(|area| {
+            area.vpn_range.get_start() <= v_start.floor()
+                && area.vpn_range.get_end() >= v_end.ceil()
+        }) {
+            self.areas[idx].unmap(&mut self.page_table);
+            self.areas.remove(idx);
+            return Ok(());
+        } else {
+            return Err("munmap_impl: this addr[{start}] not mapped!");
+        }
+    }
 }
 /// map area structure, controls a contiguous piece of virtual memory
 pub struct MapArea {
